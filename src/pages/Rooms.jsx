@@ -10,7 +10,14 @@ function Rooms() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Utilisation de la norme moderne : async/await avec try...catch...finally
+  // NOUVEAU : 1. État pour stocker les données du formulaire
+  const [formData, setFormData] = useState({
+    name: "",
+    capacity: "",
+    equipment: "",
+    status: "Disponible",
+  });
+
   useEffect(() => {
     const fetchRooms = async () => {
       try {
@@ -27,13 +34,55 @@ function Rooms() {
       } catch (err) {
         setError(err.message);
       } finally {
-        // Le bloc finally s'exécute dans tous les cas (succès ou erreur), idéal pour couper le chargement
         setLoading(false);
       }
     };
 
     fetchRooms();
   }, []);
+
+  // NOUVEAU : 2. Fonction pour mettre à jour l'état quand tu tapes dans les champs
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  // NOUVEAU : 3. Fonction pour envoyer les données à Laravel
+  const handleSubmit = async (e) => {
+    e.preventDefault(); // Empêche la page de se rafraîchir
+
+    try {
+      const response = await fetch("http://127.0.0.1:8000/api/rooms", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        // On transforme l'objet formData en texte JSON pour l'API
+        body: JSON.stringify(formData),
+      });
+
+      if (response.ok) {
+        const newRoom = await response.json();
+        // On ajoute la nouvelle salle au tableau existant pour l'afficher direct
+        setRooms([...rooms, newRoom]);
+
+        // On vide le formulaire et on ferme la modale
+        setFormData({
+          name: "",
+          capacity: "",
+          equipment: "",
+          status: "Disponible",
+        });
+        setIsModalOpen(false);
+      } else {
+        alert(
+          "Erreur lors de l'ajout. Vérifie que tous les champs requis sont remplis.",
+        );
+      }
+    } catch (error) {
+      console.error("Erreur réseau :", error);
+    }
+  };
 
   const getBadgeType = (status) => {
     if (status === "Disponible") return "green";
@@ -166,7 +215,12 @@ function Rooms() {
         >
           Déclarez une nouvelle salle dans le système.
         </p>
-        <form style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+
+        {/* NOUVEAU : Le formulaire est lié à handleSubmit */}
+        <form
+          onSubmit={handleSubmit}
+          style={{ display: "flex", flexDirection: "column", gap: "16px" }}
+        >
           <div>
             <label
               style={{
@@ -179,7 +233,11 @@ function Rooms() {
             </label>
             <input
               type="text"
+              name="name" // Obligatoire pour le handleChange
+              value={formData.name} // Relié à l'état
+              onChange={handleChange}
               placeholder="Ex: Salle 205"
+              required
               style={{
                 width: "100%",
                 padding: "10px",
@@ -200,7 +258,11 @@ function Rooms() {
             </label>
             <input
               type="number"
+              name="capacity"
+              value={formData.capacity}
+              onChange={handleChange}
               placeholder="Ex: 30"
+              required
               style={{
                 width: "100%",
                 padding: "10px",
@@ -208,6 +270,68 @@ function Rooms() {
                 border: "1px solid #cbd5e1",
               }}
             />
+          </div>
+          <div>
+            <label
+              style={{
+                display: "block",
+                fontSize: "14px",
+                marginBottom: "6px",
+              }}
+            >
+              Équipement (optionnel)
+            </label>
+            <input
+              type="text"
+              name="equipment"
+              value={formData.equipment}
+              onChange={handleChange}
+              placeholder="Ex: Projecteur, Ordinateurs..."
+              style={{
+                width: "100%",
+                padding: "10px",
+                borderRadius: "8px",
+                border: "1px solid #cbd5e1",
+              }}
+            />
+          </div>
+          <div>
+            <label
+              style={{
+                display: "block",
+                fontSize: "14px",
+                marginBottom: "6px",
+              }}
+            >
+              Statut initial
+            </label>
+            <select
+              name="status"
+              value={formData.status}
+              onChange={handleChange}
+              style={{
+                width: "100%",
+                padding: "10px",
+                borderRadius: "8px",
+                border: "1px solid #cbd5e1",
+                backgroundColor: "white",
+              }}
+            >
+              <option value="Disponible">Disponible</option>
+              <option value="Indisponible">Indisponible</option>
+            </select>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              marginTop: "8px",
+            }}
+          >
+            <button type="submit" className="btn-primary">
+              Enregistrer la salle
+            </button>
           </div>
         </form>
       </Modal>
